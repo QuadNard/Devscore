@@ -16,18 +16,6 @@ datasource db {
     relationMode = "prisma"
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-    @@index([createdById])
-}
 
 // Necessary for Next auth
 model Account {
@@ -46,7 +34,7 @@ model Account {
     user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@unique([provider, providerAccountId])
-    @@index([userId])
+    @@index([userId], name: "userId" )
 }
 
 model Session {
@@ -56,7 +44,7 @@ model Session {
     expires      DateTime
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@index([userId])
+    @@index([userId], name: "userId")
 }
 
 model User {
@@ -67,8 +55,52 @@ model User {
     image         String?
     accounts      Account[]
     sessions      Session[]
-    posts         Post[]
+    Game          Game[]
+ 
 }
+
+
+enum GameType {
+  normal 
+  blitz
+}
+
+
+model Game {
+  id           String   @id @default(cuid())
+  userId       String
+  timeStarted  DateTime
+  profileCharacter  String
+  username     String
+  xpGained     Int    @default(200)
+  level        Int    @default(1)
+  highestStreak    String   @default("unranked")
+  presitge     Int    @default(0)
+  timeEnded    DateTime?
+  gameType   GameType
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions     Question[]
+
+  @@index([userId], name: "userId")
+}
+
+model Question {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  gameId      String
+  options     Json?  
+  percentageCorrect Float?
+  isCorrect   Boolean?
+  questionType GameType
+  userAnswer  String?
+  
+
+  game       Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId], name: "gameId")
+}
+
 
 model VerificationToken {
     identifier String

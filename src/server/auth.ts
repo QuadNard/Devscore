@@ -5,10 +5,9 @@ import {
   type NextAuthOptions,
 } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-
 import { env } from "@/env";
 import { db } from "@/server/db";
-import Github from "next-auth/providers/github";
+import GitHubProvider from "next-auth/providers/github";
 
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
@@ -30,6 +29,11 @@ declare module "next-auth" {
   //   // role: UserRole;
   // }
 }
+declare module 'next-auth/jwt' {
+  interface JWT {
+    id: string;
+  }
+}
 
 /**
  * Options for NextAuth.js used to configure adapters, providers, callbacks, etc.
@@ -37,14 +41,31 @@ declare module "next-auth" {
  * @see https://next-auth.js.org/configuration/options
  */
 export const authOptions: NextAuthOptions = {
+  session: {
+    strategy: "jwt",
+  },
+  secret: env.NEXTAUTH_SECRET,
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-      },
-    }),
+    jwt: async ({ token }) => {
+      const db_user = await db.user.findFirst({
+        where: { 
+          email: token?.email, 
+        },
+      });
+      if(db_user){
+        token.id = db_user.id;
+      }
+      return token;
+    },
+    session: ({ session, token }) => {
+      if(token) {
+        session.user.id = token.id;
+        session.user.name = token.name;
+        session.user.email = token.email;
+        session.user.image = token.picture;
+      }
+      return session;
+    }
   },
   adapter: PrismaAdapter(db),
   providers: [
@@ -52,7 +73,7 @@ export const authOptions: NextAuthOptions = {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     }),
-    Github({
+    GitHubProvider({
       clientId: env.GITHUB_CLIENT_ID,
       clientSecret: env.GITHUB_CLIENT_SECRET,
     }),

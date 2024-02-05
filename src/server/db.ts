@@ -10,6 +10,7 @@ const globalForPrisma = globalThis as unknown as {
 
 const client = new Client({ url: env.DATABASE_URL });
 
+
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
